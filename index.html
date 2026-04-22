@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>2026년 1분기 재정보고서 — 사랑과평안의교회</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/recharts@2/umd/Recharts.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #F1F5F9; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+    const { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } = Recharts;
+
+    const w   = (n) => { var v=n||0; return v.toLocaleString("ko-KR")+"원"; };
+    const sh  = (n) => { var v=n||0,a=Math.abs(v),sg=v<0?"-":""; if(a>=1e8) return sg+(a/1e8).toFixed(1)+"억"; if(a>=1e4) return sg+Math.round(a/1e4).toLocaleString()+"만"; return sg+a.toLocaleString(); };
+    const shW = (n) => sh(n)+"원";
+    const rp  = (a,b) => b?(a/b*100).toFixed(1)+"%":"0%";
+
+    const C = {
+      pri:"#1E40AF", priM:"#2563EB", priL:"#3B82F6",
+      up:"#16A34A", dn:"#DC2626",
+      bg:"#F1F5F9", card:"#FFFFFF",
+      t1:"#0F172A", t2:"#334155", t3:"#64748B", t4:"#94A3B8",
+      sep:"#E2E8F0",
+    };
+
+    const D = {
+      income:237011271, expense:100614703, balance:136396568,
+      carryover:121295307, newIncome:115715964,
+      balPie:[
+        {n:"일반헌금",v:7185861},{n:"목적헌금",v:124841240},
+        {n:"NGC 예배",v:2029280},{n:"특별 적립금",v:2340187},
+      ],
+      assets:{
+        total:4537758720, prev:4551213640,
+        items:[
+          {n:"본관",          v:6200000000,  p:6200000000,  t:"부동산"},
+          {n:"교육관 4층",    v:800000000,   p:800000000,   t:"부동산"},
+          {n:"농협 대출",     v:-2600000000, p:-2600000000, t:"부채"},
+          {n:"사무용품·음향기기",v:16463413,p:14817072,    t:"동산"},
+          {n:"일반통장 잔액", v:117367230,   p:132027101,   t:"동산"},
+          {n:"NGC 예배 잔액", v:2029280,     p:1587890,     t:"동산"},
+          {n:"특별 적립금",   v:2340187,     p:2340187,     t:"동산"},
+        ],
+      },
+      purpose:[
+        {n:"건축헌금",        p:80690902, i:11973300, e:0,        b:92664202},
+        {n:"기타목적헌금",    p:11198064, i:10104710, e:10026600, b:11276174},
+        {n:"선교헌금",        p:8903339,  i:1010000,  e:6337400,  b:3575939},
+        {n:"카렌장학금",      p:6547840,  i:150000,   e:0,        b:6697840},
+        {n:"미자립교회후원금",p:4473310,  i:300000,   e:0,        b:4773310},
+        {n:"장학헌금",        p:2950000,  i:300000,   e:0,        b:3250000},
+        {n:"선교출판헌금",    p:798175,   i:0,        e:0,        b:798175},
+        {n:"출판사 후원금",   p:1030000,  i:0,        e:0,        b:1030000},
+        {n:"개인후원금",      p:775600,   i:0,        e:0,        b:775600},
+      ],
+      borrow:[
+        {n:"특별 장학기금",   a:103534542},{n:"퇴직 적립금",   a:88508074},
+        {n:"건축 적립금",     a:66656554}, {n:"안식년 적립금", a:24000000},
+        {n:"미자립교회후원금",a:16764216}, {n:"건축헌금",      a:8008200},
+      ],
+    };
+
+    function Hero({label, main, sub, children}) {
+      return (
+        <div style={{background:"linear-gradient(145deg,#0F2878 0%,#1E3A8A 45%,#2563EB 100%)",
+          borderRadius:22,padding:"22px 20px 18px",marginBottom:12,
+          boxShadow:"0 8px 30px rgba(30,64,175,0.32)"}}>
+          <p style={{color:"rgba(255,255,255,0.55)",fontSize:12,margin:"0 0 5px"}}>{label}</p>
+          <p style={{color:"#fff",fontSize:34,fontWeight:900,margin:"0 0 1px",letterSpacing:"-1px",lineHeight:1.1}}>{main}</p>
+          {sub&&<p style={{color:"rgba(255,255,255,0.35)",fontSize:11,margin:0}}>{sub}</p>}
+          {children}
+        </div>
+      );
+    }
+
+    function Card({children,style}) {
+      return <div style={{background:C.card,borderRadius:18,overflow:"hidden",marginBottom:10,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",...style}}>{children}</div>;
+    }
+
+    function SecHead({children}) {
+      return <p style={{fontSize:11,fontWeight:700,color:C.t4,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,marginTop:18,paddingLeft:2}}>{children}</p>;
+    }
+
+    function Row({label,value,vc,note,last}) {
+      return (
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+          padding:"12px 16px",borderBottom:last?"none":"1px solid "+C.sep}}>
+          <span style={{fontSize:14,color:C.t2}}>{label}</span>
+          <div style={{textAlign:"right"}}>
+            <p style={{fontSize:14,fontWeight:700,color:vc||C.t1,margin:0}}>{value}</p>
+            {note&&<p style={{fontSize:11,color:C.t4,margin:"2px 0 0"}}>{note}</p>}
+          </div>
+        </div>
+      );
+    }
+
+    function PBar({v,h}) {
+      return (
+        <div style={{background:C.sep,borderRadius:99,height:h||6,overflow:"hidden"}}>
+          <div style={{width:Math.min(v,100)+"%",height:"100%",background:C.priM,borderRadius:99}}/>
+        </div>
+      );
+    }
+
+    function Seg({opts,val,set}) {
+      return (
+        <div style={{display:"flex",background:"rgba(100,116,139,0.12)",borderRadius:12,padding:3,marginBottom:12}}>
+          {opts.map(function(o){
+            var a=val===o.id;
+            return (
+              <button key={o.id} onClick={function(){set(o.id);}}
+                style={{flex:1,padding:"8px 4px",border:"none",cursor:"pointer",borderRadius:10,
+                  fontSize:12,fontWeight:a?700:500,background:a?C.card:"transparent",
+                  color:a?C.pri:C.t3,boxShadow:a?"0 1px 4px rgba(0,0,0,0.1)":"none"}}>
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function Tip({active,payload}) {
+      if(!active||!payload||!payload.length) return null;
+      return (
+        <div style={{background:"#1E293B",borderRadius:10,padding:"8px 12px",boxShadow:"0 8px 24px rgba(0,0,0,0.2)"}}>
+          <p style={{color:"#fff",fontSize:12,fontWeight:700,margin:0}}>{w(payload[0].value)}</p>
+        </div>
+      );
+    }
+
+    function Overview() {
+      var execPct = parseFloat(rp(D.expense,D.income));
+      var balPie = [
+        {n:"일반헌금",    v:7185861,   c:"#2563EB"},
+        {n:"목적헌금",    v:124841240, c:"#EF4444"},
+        {n:"NGC 예배",   v:2029280,   c:"#10B981"},
+        {n:"특별 적립금", v:2340187,   c:"#F59E0B"},
+      ];
+      var iData = [
+        {n:"전년 이월금",v:121295307},{n:"일반헌금",v:91300954},
+        {n:"목적헌금",v:23838010},{n:"NGC",v:577000},
+      ];
+      return (
+        <div>
+          <Hero label="1분기 잔액 총계" main={shW(D.balance)} sub={w(D.balance)}>
+            <div style={{display:"flex",gap:8,marginTop:16}}>
+              {[{l:"수입 총계",v:D.income},{l:"지출 총계",v:D.expense}].map(function(k,i){
+                return (
+                  <div key={i} style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"10px 12px"}}>
+                    <p style={{color:"rgba(255,255,255,0.55)",fontSize:10,margin:"0 0 3px"}}>{k.l}</p>
+                    <p style={{color:"#fff",fontSize:14,fontWeight:800,margin:0}}>{shW(k.v)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Hero>
+
+          <Card>
+            <div style={{padding:"16px 16px 14px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:10}}>
+                <div>
+                  <p style={{fontSize:12,color:C.t3,margin:"0 0 2px"}}>지출 집행률</p>
+                  <p style={{fontSize:12,color:C.t4,margin:0}}>수입 총계 대비</p>
+                </div>
+                <p style={{fontSize:30,fontWeight:900,color:C.priM,margin:0,letterSpacing:"-1px"}}>{execPct}%</p>
+              </div>
+              <PBar v={execPct} h={8}/>
+              <p style={{fontSize:11,color:C.t4,marginTop:8}}>지출 {w(D.expense)} / 수입 {w(D.income)}</p>
+            </div>
+          </Card>
+
+          <SecHead>핵심 지표</SecHead>
+          <Card>
+            <Row label="신규 수입 (이월 제외)" value={shW(D.newIncome)} vc={C.priM} note={"이월금 "+rp(D.carryover,D.income)+" 제외"}/>
+            <Row label="전년도 이월금" value={shW(D.carryover)} note="전년도 이월 포함"/>
+            <Row label="결산 잔액" value={shW(D.balance)} vc={C.up} last/>
+          </Card>
+
+          <SecHead>잔액 구성</SecHead>
+          <Card>
+            <div style={{padding:"16px 16px 10px"}}>
+              <ResponsiveContainer width="100%" height={185}>
+                <PieChart>
+                  <Pie data={balPie} dataKey="v" cx="50%" cy="50%" innerRadius={50} outerRadius={78}
+                    paddingAngle={2}
+                    label={function(e){return e.percent>0.04?(e.percent*100).toFixed(0)+"%":""}}
+                    labelLine={false}>
+                    {balPie.map(function(d){return <Cell key={d.n} fill={d.c} strokeWidth={0}/>;})}</Pie>
+                  <Tooltip content={<Tip/>}/>
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {balPie.map(function(d){
+                  return (
+                    <div key={d.n} style={{display:"flex",alignItems:"center",gap:7}}>
+                      <div style={{width:10,height:10,borderRadius:3,background:d.c,flexShrink:0}}/>
+                      <div>
+                        <p style={{fontSize:10,color:C.t4,margin:0}}>{d.n}</p>
+                        <p style={{fontSize:12,fontWeight:700,color:C.t1,margin:0}}>{shW(d.v)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+
+          <SecHead>수입 구성</SecHead>
+          <Card>
+            <div style={{padding:"14px 4px 10px"}}>
+              <ResponsiveContainer width="100%" height={155}>
+                <BarChart layout="vertical" data={iData} margin={{left:8,right:50,top:2,bottom:2}}>
+                  <XAxis type="number" tickFormatter={sh} tick={{fontSize:9,fill:C.t4}} axisLine={false} tickLine={false}/>
+                  <YAxis type="category" dataKey="n" tick={{fontSize:11,fill:C.t2}} width={65} axisLine={false} tickLine={false}/>
+                  <Tooltip content={<Tip/>} cursor={{fill:"rgba(0,0,0,0.03)"}}/>
+                  <Bar dataKey="v" radius={[0,5,5,0]} barSize={17}>
+                    {iData.map(function(_,i){return <Cell key={i} fill={["#64748B","#2563EB","#F59E0B","#10B981"][i]}/>;})}</Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    function Assets() {
+      var items=D.assets.items, total=D.assets.total, prev=D.assets.prev, diff=total-prev;
+      var re=items.filter(function(a){return a.t==="부동산";}).reduce(function(s,a){return s+a.v;},0);
+      var mo=items.filter(function(a){return a.t==="동산";  }).reduce(function(s,a){return s+a.v;},0);
+      var db=Math.abs(items.filter(function(a){return a.t==="부채";}).reduce(function(s,a){return s+a.v;},0));
+      var tTag={"부동산":C.priM,"동산":C.priL,"부채":C.dn};
+
+      return (
+        <div>
+          <Hero label="총 자산 (26년 1분기)" main={shW(total)} sub={w(total)}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:12}}>
+              <span style={{fontSize:12,color:diff<0?"#FCA5A5":"#6EE7B7",fontWeight:700}}>
+                {diff<0?"▼":"▲"} {shW(Math.abs(diff))}
+              </span>
+              <span style={{fontSize:11,color:"rgba(255,255,255,0.45)"}}>
+                전분기 대비 ({((diff/prev)*100).toFixed(2)}%)
+              </span>
+            </div>
+          </Hero>
+
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
+            {[{l:"부동산",v:re,bg:"rgba(59,130,246,0.1)",c:C.priM},{l:"동산",v:mo,bg:"rgba(99,102,241,0.1)",c:"#6366F1"},{l:"부채",v:db,bg:"rgba(220,38,38,0.08)",c:C.dn}].map(function(k,i){
+              return (
+                <div key={i} style={{background:k.bg,borderRadius:14,padding:"13px 10px"}}>
+                  <p style={{fontSize:10,color:C.t3,margin:"0 0 5px"}}>{k.l}</p>
+                  <p style={{fontSize:13,fontWeight:800,color:k.c,margin:0,letterSpacing:"-0.5px"}}>{shW(k.v)}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <SecHead>항목별 상세</SecHead>
+          {items.map(function(a,i){
+            var d=a.v-a.p;
+            return (
+              <div key={i} style={{background:C.card,borderRadius:14,padding:"13px 15px",marginBottom:8,
+                boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
+                      <span style={{fontSize:14,fontWeight:600,color:C.t1}}>{a.n}</span>
+                      <span style={{fontSize:10,fontWeight:700,color:tTag[a.t],background:"rgba(37,99,235,0.08)",
+                        padding:"2px 7px",borderRadius:99}}>{a.t}</span>
+                    </div>
+                    <span style={{fontSize:11,color:C.t4}}>전분기 {shW(a.p)}</span>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <p style={{fontSize:15,fontWeight:800,color:a.v<0?C.dn:C.t1,margin:0,letterSpacing:"-0.5px"}}>{shW(a.v)}</p>
+                    {d!==0&&<p style={{fontSize:11,fontWeight:600,color:d>0?C.up:C.dn,margin:"3px 0 0"}}>{d>0?"▲":"▼"} {shW(Math.abs(d))}</p>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function Offerings() {
+      const [sub,setSub]=useState("general");
+      var execPct=(84115093/91300954*100).toFixed(1);
+      var purposeColors=["#2563EB","#F59E0B","#EF4444","#10B981","#8B5CF6","#F97316","#06B6D4","#EC4899","#84CC16"];
+      var cData=D.purpose.slice(0,6).map(function(p,i){return {n:p.n.length>6?p.n.slice(0,6)+"…":p.n,v:p.b,fill:purposeColors[i]};});
+      return (
+        <div>
+          <Seg opts={[{id:"general",label:"일반헌금"},{id:"purpose",label:"목적헌금"},{id:"ngc",label:"NGC · 적립금"}]} val={sub} set={setSub}/>
+
+          {sub==="general"&&(
+            <div>
+              <Hero label="일반헌금 결산 잔액" main={shW(7185861)}>
+                <div style={{display:"flex",gap:8,marginTop:16}}>
+                  {[{l:"수입",v:91300954},{l:"지출",v:84115093}].map(function(k,i){
+                    return (
+                      <div key={i} style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"10px 12px"}}>
+                        <p style={{color:"rgba(255,255,255,0.55)",fontSize:10,margin:"0 0 3px"}}>{k.l}</p>
+                        <p style={{color:"#fff",fontSize:14,fontWeight:800,margin:0}}>{shW(k.v)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Hero>
+              <Card>
+                <div style={{padding:"15px 16px 13px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:10}}>
+                    <div>
+                      <p style={{fontSize:12,color:C.t3,margin:"0 0 2px"}}>지출 집행률</p>
+                      <p style={{fontSize:11,color:C.t4,margin:0}}>수입 대비 지출</p>
+                    </div>
+                    <p style={{fontSize:28,fontWeight:900,color:C.priM,margin:0,letterSpacing:"-1px"}}>{execPct}%</p>
+                  </div>
+                  <PBar v={parseFloat(execPct)} h={8}/>
+                  <p style={{fontSize:11,color:C.t4,marginTop:8}}>잔액 {w(7185861)}</p>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {sub==="purpose"&&(
+            <div>
+              <Hero label="목적헌금 결산 잔액" main={shW(124841240)}>
+                <div style={{display:"flex",gap:8,marginTop:16}}>
+                  {[{l:"전년 이월",v:117367230},{l:"1분기 수입",v:23838010},{l:"1분기 지출",v:16364000}].map(function(k,i){
+                    return (
+                      <div key={i} style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:10,padding:"8px 10px"}}>
+                        <p style={{color:"rgba(255,255,255,0.55)",fontSize:9,margin:"0 0 2px"}}>{k.l}</p>
+                        <p style={{color:"#fff",fontSize:12,fontWeight:800,margin:0}}>{shW(k.v)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Hero>
+              <Card>
+                <div style={{padding:"14px 4px 10px"}}>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart layout="vertical" data={cData} margin={{left:8,right:52,top:2,bottom:2}}>
+                      <XAxis type="number" tickFormatter={sh} tick={{fontSize:9,fill:C.t4}} axisLine={false} tickLine={false}/>
+                      <YAxis type="category" dataKey="n" tick={{fontSize:10,fill:C.t2}} width={68} axisLine={false} tickLine={false}/>
+                      <Tooltip content={<Tip/>} cursor={{fill:"rgba(0,0,0,0.03)"}}/>
+                      <Bar dataKey="v" radius={[0,5,5,0]} barSize={17}>
+                        {cData.map(function(d,i){return <Cell key={i} fill={d.fill}/>;})}</Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+              <SecHead>항목 상세</SecHead>
+              {D.purpose.map(function(p,i){
+                return (
+                  <div key={i} style={{background:C.card,borderRadius:14,padding:"12px 15px",marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                      <p style={{fontSize:14,fontWeight:600,color:C.t1,margin:"0 0 4px"}}>{p.n}</p>
+                      <p style={{fontSize:14,fontWeight:800,color:C.priM,margin:0,letterSpacing:"-0.3px"}}>{shW(p.b)}</p>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <span style={{fontSize:11,color:C.t4}}>이월 {shW(p.p)}</span>
+                      {p.i>0&&<span style={{fontSize:11,color:C.priM,fontWeight:600}}>+{shW(p.i)}</span>}
+                      {p.e>0&&<span style={{fontSize:11,color:C.dn,fontWeight:600}}>-{shW(p.e)}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {sub==="ngc"&&(
+            <div>
+              <Hero label="NGC 예배 결산 잔액" main={shW(2029280)}>
+                <div style={{display:"flex",gap:8,marginTop:16}}>
+                  {[{l:"수입",v:577000},{l:"지출",v:135610}].map(function(k,i){
+                    return (
+                      <div key={i} style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"10px 12px"}}>
+                        <p style={{color:"rgba(255,255,255,0.55)",fontSize:10,margin:"0 0 3px"}}>{k.l}</p>
+                        <p style={{color:"#fff",fontSize:14,fontWeight:800,margin:0}}>{shW(k.v)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Hero>
+              <SecHead>특별 적립금</SecHead>
+              <Card>
+                {[{n:"특별 장학기금",b:0},{n:"건축 적립금",b:2340187},{n:"퇴직 적립금",b:0},{n:"안식년 적립금",b:0}].map(function(r,i,arr){
+                  return <Row key={i} label={r.n} value={r.b>0?shW(r.b):"—"} vc={r.b>0?C.up:C.t4} last={i===arr.length-1}/>;
+                })}
+              </Card>
+              <SecHead>외화 현황 (미국달러)</SecHead>
+              <Card>
+                {[{n:"전년 이월",v:"$20,493"},{n:"일반헌금",v:"$400"},{n:"카렌장학금",v:"$838"},{n:"담임목사 사역비",v:"$100"}].map(function(r,i,arr){
+                  return <Row key={i} label={r.n} value={r.v} vc={C.priM} last={i===arr.length-1}/>;
+                })}
+                <div style={{padding:"10px 16px",background:"rgba(241,245,249,0.8)"}}>
+                  <p style={{fontSize:11,color:C.t4,margin:0}}>※ 태국 바트(일반헌금·선교출판·카렌장학) 별도 보관</p>
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function Borrowing() {
+      var total=307471586;
+      return (
+        <div>
+          <div style={{background:"rgba(30,64,175,0.06)",border:"1px solid rgba(30,64,175,0.15)",
+            borderRadius:14,padding:"13px 15px",marginBottom:12}}>
+            <p style={{fontSize:13,fontWeight:700,color:C.pri,margin:"0 0 4px"}}>계정간 차용금 안내</p>
+            <p style={{fontSize:12,color:C.t2,margin:0,lineHeight:1.7}}>
+              외부 기관 차용금이 아닌 <strong>교회 내부 계정 간</strong> 자금 사용 내역입니다. 1분기 중 신규 차용·상환 없음.
+            </p>
+          </div>
+          <Hero label="총 계정간 차용금 (내부)" main={shW(total)} sub={w(total)}/>
+          <SecHead>항목별 현황</SecHead>
+          {D.borrow.map(function(b,i){
+            var p=(b.a/total*100).toFixed(1);
+            return (
+              <div key={i} style={{background:C.card,borderRadius:14,padding:"13px 15px",marginBottom:8,
+                boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
+                  <span style={{fontSize:14,color:C.t1}}>{b.n}</span>
+                  <div style={{textAlign:"right"}}>
+                    <span style={{fontSize:14,fontWeight:800,color:C.t1,letterSpacing:"-0.3px"}}>{shW(b.a)}</span>
+                    <span style={{fontSize:11,color:C.t4,marginLeft:6}}>{p}%</span>
+                  </div>
+                </div>
+                <PBar v={parseFloat(p)} h={5}/>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function Original() {
+      var thS = {padding:"7px 8px",fontSize:11,fontWeight:700,color:"#555",
+        background:"#F8F8F8",borderBottom:"1px solid #CCC",borderRight:"1px solid #E0E0E0",textAlign:"right",whiteSpace:"nowrap"};
+      var th1S = {...thS, textAlign:"left"};
+      var tdS = {padding:"7px 8px",fontSize:12,color:"#1a1a1a",textAlign:"right",
+        borderBottom:"1px solid #E8E8E8",borderRight:"1px solid #F0F0F0",whiteSpace:"nowrap"};
+      var td1S = {...tdS, textAlign:"left"};
+      var tfS = {padding:"7px 8px",fontSize:12,fontWeight:700,color:"#1E3A8A",
+        background:"rgba(30,58,138,0.06)",textAlign:"right",whiteSpace:"nowrap"};
+      var tf1S = {...tfS, textAlign:"left"};
+
+      function Tbl({headers,rows,footer,subRows}) {
+        return (
+          <div style={{overflowX:"auto",marginBottom:14}}>
+            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #CCC",
+              borderRadius:8,overflow:"hidden",fontSize:12}}>
+              <thead>
+                <tr>{headers.map(function(h,i){return <th key={i} style={i===0?th1S:thS}>{h}</th>;})}</tr>
+              </thead>
+              <tbody>
+                {rows.map(function(row,i){
+                  var indent = subRows && subRows.indexOf(i)>=0;
+                  return (
+                    <tr key={i} style={{background:i%2===0?"#fff":"#FAFAFA"}}>
+                      {row.map(function(cell,j){
+                        var s = j===0 ? {...td1S, paddingLeft: indent?"20px":"8px", color: indent?"#555":"#1a1a1a"} : tdS;
+                        return <td key={j} style={s}>{cell}</td>;
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {footer&&(
+                <tfoot>
+                  <tr>{footer.map(function(cell,j){return <td key={j} style={j===0?tf1S:tfS}>{cell}</td>;})}</tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        );
+      }
+
+      function DocSection({num,title,children}) {
+        return (
+          <div style={{marginBottom:6}}>
+            <p style={{fontSize:13,fontWeight:700,color:C.t1,margin:"16px 0 8px"}}>
+              <span style={{color:C.priM}}>{num}.</span> {title}
+            </p>
+            {children}
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          <div style={{background:C.card,borderRadius:14,padding:"16px",marginBottom:8,
+            border:"1px solid "+C.sep,textAlign:"center"}}>
+            <p style={{fontSize:11,color:C.t4,margin:"0 0 4px"}}>기준일 2026. 3. 1</p>
+            <p style={{fontSize:17,fontWeight:800,color:C.t1,margin:"0 0 2px",letterSpacing:"-0.3px"}}>26년 1분기 재정보고서</p>
+            <p style={{fontSize:11,color:C.t4,margin:0}}>사랑과평안의교회</p>
+          </div>
+
+          <div style={{background:C.card,borderRadius:14,padding:"16px",border:"1px solid "+C.sep}}>
+            <DocSection num="1" title="잔액현황">
+              <Tbl headers={["항목","금액","비고"]}
+                rows={[
+                  ["일반헌금","7,185,861",""],
+                  ["목적헌금","124,841,240",""],
+                  ["NGC 예배","2,029,280",""],
+                  ["특별 적립금","2,340,187",""],
+                ]}
+                footer={["잔액 합계","136,396,568",""]}
+              />
+            </DocSection>
+
+            <DocSection num="2" title="결산금 현황">
+              <Tbl headers={["항목","금액","비고"]}
+                rows={[
+                  ["일반헌금 전년도 이월금","0",""],
+                  ["목적헌금 전년도 이월금","117,367,230",""],
+                  ["NGC 예배 전년도 이월금","1,587,890",""],
+                  ["특별 적립금 전년도 이월금","2,340,187",""],
+                  ["일반헌금 수입계","91,300,954",""],
+                  ["목적헌금 수입계","23,838,010",""],
+                  ["NGC 예배 수입계","577,000",""],
+                  ["특별 적립금 수입계","0",""],
+                  ["수입 총계","237,011,271",""],
+                  ["일반헌금 지출계","84,115,093",""],
+                  ["목적헌금 지출계","16,364,000",""],
+                  ["NGC 예배 지출계","135,610",""],
+                  ["특별 적립금 지출계","0",""],
+                  ["지출 총계","100,614,703",""],
+                ]}
+                footer={["잔액 총계","136,396,568",""]}
+              />
+            </DocSection>
+
+            <DocSection num="3" title="자산현황">
+              <Tbl headers={["항목","전년도 평가액","26년 1분기","비고"]}
+                rows={[
+                  ["교육관 4층 평가액","800,000,000","800,000,000","부동산"],
+                  ["본관 평가액","6,200,000,000","6,200,000,000","부동산"],
+                  ["사무용품 및 음향기기","14,817,072","16,463,413","10% 감가상각"],
+                  ["일반통장 계좌 잔액","132,027,101","117,367,230","분기별 변동 고려"],
+                  ["NGC예배 잔액","1,587,890","2,029,280","분기별 변동 고려"],
+                  ["특별 적립금 계좌 잔액","2,340,187","2,340,187","분기별 변동 고려"],
+                  ["부채 농협 대출","-2,600,000,000","-2,600,000,000","새성전 매입"],
+                ]}
+                footer={["합계","4,551,213,640","4,537,758,720","100.30%"]}
+              />
+            </DocSection>
+
+            <DocSection num="4" title="계정간 차용금 현황 (※ 외부 기관 차용 아님)">
+              <Tbl headers={["구분","전년 이월","26년 1분기 차용","상환","결산","이월금"]}
+                rows={[
+                  ["건축헌금","8,008,200","0","0","8,008,200","8,008,200"],
+                  ["미자립교회후원금","16,764,216","0","0","16,764,216","16,764,216"],
+                  ["특별 장학기금","103,534,542","0","0","103,534,542","103,534,542"],
+                  ["건축 적립금","66,656,554","0","0","66,656,554","66,656,554"],
+                  ["퇴직 적립금","88,508,074","0","0","88,508,074","88,508,074"],
+                  ["안식년 적립금","24,000,000","0","0","24,000,000","24,000,000"],
+                ]}
+                footer={["합계","307,471,586","0","0","307,471,586","307,471,586"]}
+              />
+            </DocSection>
+
+            <DocSection num="5" title="일반헌금 현황">
+              <Tbl headers={["구분","전년 이월","수입","지출","결산","차용(-)","이월금"]}
+                rows={[["일반헌금","0","91,300,954","84,115,093","7,185,861","0","7,185,861"]]}
+                footer={["합계","0","91,300,954","84,115,093","7,185,861","0","7,185,861"]}
+              />
+            </DocSection>
+
+            <DocSection num="6" title="목적헌금 현황">
+              <Tbl
+                headers={["구분","전년 이월","수입","지출","결산","차용(-)","이월금"]}
+                rows={[
+                  ["장학헌금","2,950,000","300,000","0","3,250,000","0","3,250,000"],
+                  ["건축헌금","80,690,902","11,973,300","0","92,664,202","0","92,664,202"],
+                  ["미자립교회후원금","4,473,310","300,000","0","4,773,310","0","4,773,310"],
+                  ["선교출판헌금","798,175","0","0","798,175","0","798,175"],
+                  ["출판사 후원금","1,030,000","0","0","1,030,000","0","1,030,000"],
+                  ["선교헌금","16,226,779","1,160,000","6,337,400","11,049,379","0","11,049,379"],
+                  ["ㄴ 개인후원금","775,600","0","0","775,600","0","775,600"],
+                  ["ㄴ 카렌장학금","6,547,840","150,000","0","6,697,840","0","6,697,840"],
+                  ["ㄴ 선교헌금","8,903,339","1,010,000","6,337,400","3,575,939","0","3,575,939"],
+                  ["기타목적헌금","11,198,064","10,104,710","10,026,600","11,276,174","0","11,276,174"],
+                ]}
+                footer={["합계","117,367,230","23,838,010","16,364,000","124,841,240","0","124,841,240"]}
+                subRows={[6,7,8]}
+              />
+            </DocSection>
+
+            <DocSection num="7" title="NGC 예배 헌금 현황">
+              <Tbl headers={["구분","전년 이월","수입","지출","결산","차용(-)","이월금"]}
+                rows={[["NGC 예배","1,587,890","577,000","135,610","2,029,280","0","2,029,280"]]}
+                footer={["합계","1,587,890","577,000","135,610","2,029,280","0","2,029,280"]}
+              />
+            </DocSection>
+
+            <DocSection num="8" title="특별 적립금 현황">
+              <Tbl headers={["구분","전년 이월","수입","지출","결산","차용(-)","이월금"]}
+                rows={[
+                  ["특별 장학기금","0","0","0","0","0","0"],
+                  ["건축 적립금","2,340,187","0","0","2,340,187","0","2,340,187"],
+                  ["퇴직 적립금","0","0","0","0","0","0"],
+                  ["안식년 적립금","0","0","0","0","0","0"],
+                ]}
+                footer={["합계","2,340,187","0","0","2,340,187","0","2,340,187"]}
+              />
+            </DocSection>
+
+            <DocSection num="9" title="외화현황">
+              <Tbl headers={["구분","전년 이월","수입","지출","결산"]}
+                rows={[
+                  ["미국달러 합계","$20,493","$0","$0","$20,493"],
+                  ["ㄴ 일반헌금","$400","","","$400"],
+                  ["ㄴ 카렌장학금","$838","","","$838"],
+                  ["ㄴ 담임목사사역비","$100","","","$100"],
+                ]}
+                subRows={[1,2,3]}
+              />
+              <p style={{fontSize:11,color:C.t4,marginTop:4}}>※ 태국 바트(일반헌금·선교출판·카렌장학) 별도 보관</p>
+            </DocSection>
+          </div>
+          <div style={{height:8}}/>
+        </div>
+      );
+    }
+
+    function App() {
+      const [tab,setTab] = useState("overview");
+      var tabs = [
+        {id:"overview", e:"📊",l:"개요"},
+        {id:"assets",   e:"🏛", l:"자산"},
+        {id:"offerings",e:"💰",l:"헌금"},
+        {id:"borrowing",e:"🔄",l:"차용금"},
+        {id:"original", e:"📋",l:"원본"},
+      ];
+      return (
+        <div style={{background:C.bg,minHeight:"100vh",maxWidth:430,margin:"0 auto",
+          fontFamily:"'Apple SD Gothic Neo','Pretendard',system-ui,sans-serif"}}>
+          <div style={{background:"rgba(241,245,249,0.92)",backdropFilter:"blur(16px)",
+            WebkitBackdropFilter:"blur(16px)",padding:"20px 18px 12px",
+            position:"sticky",top:0,zIndex:100,borderBottom:"1px solid "+C.sep}}>
+            <p style={{fontSize:11,color:C.t4,margin:"0 0 2px"}}>사랑과평안의교회</p>
+            <h1 style={{fontSize:18,fontWeight:800,color:C.t1,margin:0,letterSpacing:"-0.3px"}}>2026년 1분기 재정보고서</h1>
+          </div>
+
+          <div style={{padding:"12px 14px 90px"}}>
+            {tab==="overview"  && <Overview/>}
+            {tab==="assets"    && <Assets/>}
+            {tab==="offerings" && <Offerings/>}
+            {tab==="borrowing" && <Borrowing/>}
+            {tab==="original"  && <Original/>}
+          </div>
+
+          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",
+            width:"100%",maxWidth:430,background:"rgba(255,255,255,0.94)",
+            backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",
+            borderTop:"1px solid "+C.sep,display:"flex",zIndex:200,
+            paddingBottom:"env(safe-area-inset-bottom,0px)"}}>
+            {tabs.map(function(t){
+              var a=tab===t.id;
+              return (
+                <button key={t.id} onClick={function(){setTab(t.id);}}
+                  style={{flex:1,padding:"9px 0 11px",border:"none",background:"none",cursor:"pointer",
+                    display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                  <div style={{width:38,height:28,display:"flex",alignItems:"center",justifyContent:"center",
+                    borderRadius:10,background:a?"rgba(37,99,235,0.1)":"transparent"}}>
+                    <span style={{fontSize:17,filter:a?"none":"grayscale(1) opacity(0.4)"}}>{t.e}</span>
+                  </div>
+                  <span style={{fontSize:10,fontWeight:a?700:400,color:a?C.priM:C.t4}}>{t.l}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
