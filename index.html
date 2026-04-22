@@ -6,7 +6,25 @@
   <title>2026년 1분기 재정보고서 — 사랑과평안의교회</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+  <script>
+    // PropTypes shim — recharts UMD requires this global before loading
+    window.PropTypes = {
+      any:function(){return null;}, array:function(){return null;},
+      bool:function(){return null;}, func:function(){return null;},
+      number:function(){return null;}, object:function(){return null;},
+      string:function(){return null;}, symbol:function(){return null;},
+      node:function(){return null;}, element:function(){return null;},
+      elementType:function(){return null;},
+      instanceOf:function(){return function(){return null;};},
+      oneOf:function(){return function(){return null;};},
+      oneOfType:function(){return function(){return null;};},
+      arrayOf:function(){return function(){return null;};},
+      objectOf:function(){return function(){return null;};},
+      shape:function(){return function(){return null;};},
+      exact:function(){return function(){return null;};},
+      checkPropTypes:function(){}, resetWarningCache:function(){},
+    };
+  </script>
   <script src="https://unpkg.com/recharts@2/umd/Recharts.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
